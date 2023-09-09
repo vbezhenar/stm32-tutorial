@@ -44,4 +44,4 @@ as, gcc и тд, по каждому из них можно книги писа�
   утилита для сборки проектов.
 - [GNU linker ld](https://sourceware.org/binutils/docs/ld/). Это компоновщик
   (линкер).
-- [GNU assembler as](https://sourceware.org/binutils/docs/as/). Это ассмблер.
+- [GNU assembler as](https://sourceware.org/binutils/docs/as/). Это ассемблер.
