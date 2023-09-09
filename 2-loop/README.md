@@ -329,6 +329,8 @@ STM32F103 эту информацию можно посмотреть в Referen
 понятные, отрабатывают за тысячные доли секунды, но всё же для организации
 процесса сборки разумно использовать make.
 
+`Makefile`:
+
 ```
 loop.bin: loop.elf
 	arm-none-eabi-objcopy -O binary -j main loop.elf loop.bin
