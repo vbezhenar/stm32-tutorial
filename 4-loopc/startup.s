@@ -1,0 +1,22 @@
+.cpu cortex-m3
+.syntax unified
+.thumb
+
+.global _startup
+
+.text
+
+_startup:
+ldr r0, =_flash_data_start
+ldr r1, =_sram_data_start
+ldr r2, =_sram_data_end
+
+copy_loop:
+cmp r1, r2
+bge end_copy
+ldr r3, [r0], #4
+str r3, [r1], #4
+b copy_loop
+
+end_copy:
+b reset_exception_handler
