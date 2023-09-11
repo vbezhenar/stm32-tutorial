@@ -2,11 +2,11 @@
 .syntax unified
 .thumb
 
-.global _startup
+.global _reset_exception_handler
 
 .text
 
-_startup:
+_reset_exception_handler:
 ldr r0, =_flash_data_start
 ldr r1, =_sram_data_start
 ldr r2, =_sram_data_end
@@ -19,4 +19,4 @@ str r3, [r1], #4
 b copy_loop
 
 end_copy:
-b reset_exception_handler
+b start

@@ -5,7 +5,7 @@ static const uint32_t loop_increment = 3;
 static uint32_t loop_value_1 = loop_start;
 static uint32_t loop_value_2;
 
-void reset_exception_handler(void)
+void start(void)
 {
     for (;;)
     {

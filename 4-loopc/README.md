@@ -17,7 +17,7 @@ static const uint32_t loop_increment = 3;
 static uint32_t loop_value_1 = loop_start;
 static uint32_t loop_value_2;
 
-void reset_exception_handler(void)
+void start(void)
 {
     for (;;)
     {
@@ -65,20 +65,20 @@ loopc.o:     file format elf32-littlearm
 
 Disassembly of section .text:
 
-00000000 <reset_exception_handler>:
+00000000 <start>:
    0:	b480      	push	{r7}
    2:	af00      	add	r7, sp, #0
-   4:	4b05      	ldr	r3, [pc, #20]	@ (1c <reset_exception_handler+0x1c>)
+   4:	4b05      	ldr	r3, [pc, #20]	@ (1c <start+0x1c>)
    6:	681b      	ldr	r3, [r3, #0]
    8:	2203      	movs	r2, #3
    a:	4413      	add	r3, r2
-   c:	4a04      	ldr	r2, [pc, #16]	@ (20 <reset_exception_handler+0x20>)
+   c:	4a04      	ldr	r2, [pc, #16]	@ (20 <start+0x20>)
    e:	6013      	str	r3, [r2, #0]
-  10:	4b03      	ldr	r3, [pc, #12]	@ (20 <reset_exception_handler+0x20>)
+  10:	4b03      	ldr	r3, [pc, #12]	@ (20 <start+0x20>)
   12:	681b      	ldr	r3, [r3, #0]
-  14:	4a01      	ldr	r2, [pc, #4]	@ (1c <reset_exception_handler+0x1c>)
+  14:	4a01      	ldr	r2, [pc, #4]	@ (1c <start+0x1c>)
   16:	6013      	str	r3, [r2, #0]
-  18:	e7f4      	b.n	4 <reset_exception_handler+0x4>
+  18:	e7f4      	b.n	4 <start+0x4>
   1a:	bf00      	nop
 	...
 
@@ -141,14 +141,14 @@ loop_increment.
 2. Также секцию `.data` нужно разместить в SRAM и все адреса в коде должны
    указывать именно в SRAM.
 3. Необходимо в самом начале работы программы, ещё перед вызовом нашей функции
-   `reset_exception_handler` скопировать секцию `.data` из флеш-памяти в SRAM.
+   `start` скопировать секцию `.data` из флеш-памяти в SRAM.
 
 Для этого мы напишем код на языке ассемблера, который будет вызван в самом
 начале, скопирует секцию `.data` и передаст управление нашей функции на C.
 
 Вот наш линкер скрипт:
 
-`loopc.ld`:
+`linker.ld`:
 
 ```
 MEMORY
@@ -235,35 +235,35 @@ SRAM.
 прошлых программах при большом желании без него можно было бы и обойтись, собрав
 конечный файл по кусочкам, то в этой программе без линкера никуда.
 
-Внимательный читатель мог заметить, что мы по адресу `0x08000004` записываем
-значение символа `_startup`, а не `reset_exception_handler`. Именно этот код,
-который мы сейчас напишем, и будет инициализировать переменные из секции
-`.data`, а потом уже перейдёт к `reset_exception_handler`. Стоит отметить, что
-использование переменных с подчёркиванием в коде на C не рекомендуется, все
-переменные такого рода считаются зарезервированными для деталей реализации.
-Именно поэтому мы и объявляем такие символы, в коде на C они не должны
-появиться. Если бы мы использовали имя `startup` или `flash_data_start`, то в
-коде на C ничего бы не мешало объявить функцию с таким же именем, и получилась
-бы неприятная коллизия. Конечно в нашем простом случае это не случится, но в
-общем случае стоит иметь это в виду. Наш линкер и наш будущий код инициализации
-секции `.data` как раз относятся к таким деталям реализации.
+Выполнение программы начинается с кода, адрес которого обозначен символов
+`_reset_exception_handler`, а наш код на C объявляет функцию `start`. Задача
+кода `_reset_exception_handler` состоит в инициализации секции `.data` и
+переходу к `start`. Стоит отметить, что использование переменных с
+подчёркиванием в коде на C не рекомендуется, все переменные такого рода
+считаются зарезервированными для деталей реализации. Именно поэтому мы и
+объявляем такие символы, в корректном коде на C они не должны появиться. Если бы
+мы использовали имя `reset_exception_handler` или `flash_data_start`, то в коде
+на C ничего бы не мешало объявить функцию с таким же именем, и получилась бы
+неприятная коллизия. Конечно в нашем простом случае это не случится, но в общем
+случае стоит иметь это в виду. Наш линкер и наш будущий код инициализации секции
+`.data` как раз относятся к таким деталям реализации.
 
-Итак пора написать код `_startup`. Мы это сделаем на языке ассемблера, чтобы к
-моменту запуска кода на C всё уже было инициализировано и готово к
-использованию.
+Итак пора написать код `_reset_exception_handler`. Мы это сделаем на языке
+ассемблера, чтобы к моменту запуска кода на C всё уже было инициализировано и
+готово к использованию.
 
-`startup.s`:
+`reset_exception_handler.s`:
 
 ```
 .cpu cortex-m3
 .syntax unified
 .thumb
 
-.global _startup
+.global _reset_exception_handler
 
 .text
 
-_startup:
+_reset_exception_handler:
 ldr r0, =_flash_data_start
 ldr r1, =_sram_data_start
 ldr r2, =_sram_data_end
@@ -276,13 +276,13 @@ str r3, [r1], #4
 b copy_loop
 
 end_copy:
-b reset_exception_handler
+b start
 ```
 
 Псевдокод, соответствующий этому коду, выглядит так:
 
 ```
-_startup:
+_reset_exception_handler:
 r0 := _flash_data_start
 r1 := _sram_data_start
 r2 := _sram_data_end
@@ -296,36 +296,50 @@ r1 := r1 + 4
 goto copy_loop
 
 end_copy:
-goto reset_exception_handler
+goto start
 ```
 
 Работа по программированию на этом закончена. `Makefile` приводить не будем, там
-всё тривиально. Соберём программу и приступим к следующей задач: запустить эту
-программу под отладкой. На этот раз вместо st-flash будем использовать gdb, он
-тоже умеет прошивать микропроцессор, да ещё и используя `.elf` файл, ему даже
-`.bin`-файл не нужен.
-
-Как и в прошлый раз, запустим в одной вкладке терминала `st-util`, а в другой
-`arm-none-eabi-gdb`. Подключимся командой `target remote 127.0.0.1:4242`.
-
-Теперь загрузим программу:
+всё тривиально. Соберём программу, прошьём её в микроконтроллер и приступим к
+отладке:
 
 ```
-(gdb) file loopc.elf
-A program is being debugged already.
-Are you sure you want to change the file? (y or n) y
+$ make flash
+arm-none-eabi-gcc -mcpu=cortex-m3 -g -O0 -c -o loopc.o loopc.c
+arm-none-eabi-ld -T linker.ld -o loopc.elf reset_exception_handler.o loopc.o
+arm-none-eabi-objcopy -O binary loopc.elf loopc.bin
+st-flash write loopc.bin 0x08000000
+st-flash 1.7.0
+...
+2023-09-11T23:48:28 INFO common.c: Flash written and verified! jolly good!
+$ st-util
+st-util --connect-under-reset
+st-util
+2023-09-11T23:50:13 WARN common.c: NRST is not connected
+2023-09-11T23:50:13 INFO common.c: F1xx Medium-density: 20 KiB SRAM, 64 KiB flash in at least 1 KiB pages.
+2023-09-11T23:50:13 INFO gdb-server.c: Listening at *:4242...
+```
+
+```
+arm-none-eabi-gdb
+GNU gdb (Arm GNU Toolchain 12.3.Rel1 (Build arm-12.35)) 13.2.90.20230627-git
+...
+(gdb) target remote 127.0.0.1:4242
+Remote debugging using 127.0.0.1:4242
+warning: No executable has been specified and target does not support
+determining executable automatically.  Try using the "file" command.
+0x08000130 in ?? ()
+```
+
+Значение регистра $pc должно быть равно `0x08000130`.
+
+Теперь загрузим программу, чтобы gdb мог прочитать символы и отладочную
+информацию:
+
+```
+(gdb) symbol-file loopc.elf
 Reading symbols from loopc.elf...
-(gdb) load
-Loading section .isr_vector, size 0x130 lma 0x8000000
-Loading section .text, size 0x48 lma 0x8000130
-Loading section .rodata, size 0x8 lma 0x8000178
-Loading section .data, size 0x4 lma 0x8000180
-Start address 0x08000130, load size 388
-Transfer rate: 1 KB/sec, 97 bytes/write.
 ```
-
-Видно, что gdb сумел прочитать наш ELF-файл, распознать в нём все секции,
-которые нужно загрузить и загрузил их по необходимым смещениям.
 
 У gdb есть очень полезная команда `display`. Мы ей указываем формат выражение,
 аналогично команде `print`, а она распечатывает это выражение при каждом шаге
@@ -336,25 +350,29 @@ Transfer rate: 1 KB/sec, 97 bytes/write.
 (gdb) display/6i $pc - 2
 1: x/6i $pc - 2
    0x800012e:	movs	r0, r0
-=> 0x8000130:	ldr	r0, [pc, #20]	@ (0x8000148)
-   0x8000132:	ldr	r1, [pc, #24]	@ (0x800014c)
-   0x8000134:	ldr	r2, [pc, #24]	@ (0x8000150)
-   0x8000136:	cmp	r1, r2
-   0x8000138:	bge.n	0x8000144
+=> 0x8000130 <_reset_exception_handler>:	ldr	r0, [pc, #20]	@ (0x8000148 <end_copy+4>)
+   0x8000132 <_reset_exception_handler+2>:	ldr	r1, [pc, #24]	@ (0x800014c <end_copy+8>)
+   0x8000134 <_reset_exception_handler+4>:	ldr	r2, [pc, #24]	@ (0x8000150 <end_copy+12>)
+   0x8000136 <copy_loop>:	cmp	r1, r2
+   0x8000138 <copy_loop+2>:	bge.n	0x8000144 <end_copy>
 ```
 
-Можно распознать в этом коде содержимое файла startup.s. Сделаем шаг:
+Можно распознать в этом коде содержимое файла startup.s. Также можно обратить
+внимание, что рядом с адресами появились имена символов, которые соответствуют
+этим адресам.
+
+Сделаем шаг:
 
 ```
 (gdb) stepi
-0x08000132 in ?? ()
+0x08000132 in _reset_exception_handler ()
 1: x/6i $pc - 2
-   0x8000130:	ldr	r0, [pc, #20]	@ (0x8000148)
-=> 0x8000132:	ldr	r1, [pc, #24]	@ (0x800014c)
-   0x8000134:	ldr	r2, [pc, #24]	@ (0x8000150)
-   0x8000136:	cmp	r1, r2
-   0x8000138:	bge.n	0x8000144
-   0x800013a:	ldr.w	r3, [r0], #4
+   0x8000130 <_reset_exception_handler>:	ldr	r0, [pc, #20]	@ (0x8000148 <end_copy+4>)
+=> 0x8000132 <_reset_exception_handler+2>:	ldr	r1, [pc, #24]	@ (0x800014c <end_copy+8>)
+   0x8000134 <_reset_exception_handler+4>:	ldr	r2, [pc, #24]	@ (0x8000150 <end_copy+12>)
+   0x8000136 <copy_loop>:	cmp	r1, r2
+   0x8000138 <copy_loop+2>:	bge.n	0x8000144 <end_copy>
+   0x800013a <copy_loop+4>:	ldr.w	r3, [r0], #4
 ```
 
 Как и ожидалось, команда `display` распечатала обновлённый код. Теперь нажмём
@@ -362,43 +380,40 @@ Transfer rate: 1 KB/sec, 97 bytes/write.
 
 ```
 (gdb)
-0x08000134 in ?? ()
+0x08000134 in _reset_exception_handler ()
 1: x/6i $pc - 2
-   0x8000132:	ldr	r1, [pc, #24]	@ (0x800014c)
-=> 0x8000134:	ldr	r2, [pc, #24]	@ (0x8000150)
-   0x8000136:	cmp	r1, r2
-   0x8000138:	bge.n	0x8000144
-   0x800013a:	ldr.w	r3, [r0], #4
-   0x800013e:	str.w	r3, [r1], #4
+   0x8000132 <_reset_exception_handler+2>:	ldr	r1, [pc, #24]	@ (0x800014c <end_copy+8>)
+=> 0x8000134 <_reset_exception_handler+4>:	ldr	r2, [pc, #24]	@ (0x8000150 <end_copy+12>)
+   0x8000136 <copy_loop>:	cmp	r1, r2
+   0x8000138 <copy_loop+2>:	bge.n	0x8000144 <end_copy>
+   0x800013a <copy_loop+4>:	ldr.w	r3, [r0], #4
 ```
 
 Это повторило предыдущую инструкцию и сделало ещё один шаг вперёд. Можно
 увидеть, что после того, как startup скопирует нашу секцию `.data`, он перейдёт
-на инструкцию по адресу `0x0800_0144`. Не будем шагать дальше, а поставим
-отладочную точку (breakpoint, брейкпоинт) на этот адрес и запустим выполнение
-программы, которая остановится там:
+на инструкцию по адресу `0x0800_0144` с символов end_copy. Не будем шагать
+дальше, а поставим отладочную точку (breakpoint, брейкпоинт) на этот адрес и
+запустим выполнение программы до остановки:
 
 ```
-(gdb) break *0x8000144
+(gdb) break end_copy
 Breakpoint 1 at 0x8000144
 Note: automatically using hardware breakpoints for read-only addresses.
 (gdb) continue
 Continuing.
 
-Breakpoint 1, 0x08000144 in ?? ()
+Breakpoint 1, 0x08000144 in end_copy ()
 1: x/6i $pc - 2
-   0x8000142:	b.n	0x8000136
-=> 0x8000144:	b.w	0x8000154
-   0x8000148:	lsls	r0, r0, #6
-   0x800014a:	lsrs	r0, r0, #32
-   0x800014c:	movs	r4, r0
-   0x800014e:	movs	r0, #0
+   0x8000142 <copy_loop+12>:	b.n	0x8000136 <copy_loop>
+=> 0x8000144 <end_copy>:	b.w	0x8000154 <start>
+   0x8000148 <end_copy+4>:	lsls	r0, r0, #6
+   0x800014a <end_copy+6>:	lsrs	r0, r0, #32
+   0x800014c <end_copy+8>:	movs	r4, r0
+   0x800014e <end_copy+10>:	movs	r0, #0
 ```
 
-Следующей инструкцей мы перейдём уже в скомпилированный код функции
-`reset_exception_handler`. А перед этим проверим, действительно ли секция
-`.data` в SRAM инициализирована. Т.к. мы загрузили ELF-файл, gdb знает про
-значения всех символов и можно их использовать:
+Следующей инструкцей мы перейдём уже в скомпилированный код функции `start`. А
+перед этим проверим, действительно ли секция `.data` в SRAM инициализирована.
 
 ```
 (gdb) print/z &_flash_data_start
@@ -409,35 +424,34 @@ $2 = 0x20000004
 $3 = 0x20000008
 (gdb) x/z 0x08000180
 0x8000180:	0x12345678
-(gdb) x/4z 0x20000000
-0x20000000 <loop_value_2>:	0xbf00bf00	0x12345678	0x443e4e0e	0x443d4d0e
+(gdb) x/z 0x20000004
+0x20000004 <loop_value_1>:	0x12345678
 ```
 
-Можно сделать вывод: что наша секция `.data` была записана во флеш-память по
-адресу `0x0800_0180`, а затем скопирована в SRAM по адресу `0x2000_0004` и
-занимает 4 байта. Также обратим внимание, что gdb знает про переменную
-`loop_value_2` и про её адрес.
+Видно, что значение `0x1234_5678` действительно было скопировано с флеш-памяти
+по адресу `0x0800_0180` в SRAM по адресу `0x2000_0004`. Также gdb знает про
+символ `loop_value_1`, т.е. переменную из кода на C.
 
-Теперь перейдём в наш код на C:
+Теперь перейдём в функцию start:
 
 ```
 (gdb) stepi
-reset_exception_handler () at loopc.c:9
+start () at loopc.c:9
 9	{
 1: x/6i $pc - 2
    0x8000152 <end_copy+14>:	movs	r0, #0
-=> 0x8000154 <reset_exception_handler>:	push	{r7}
-   0x8000156 <reset_exception_handler+2>:	add	r7, sp, #0
-   0x8000158 <reset_exception_handler+4>:	ldr	r3, [pc, #20]	@ (0x8000170 <reset_exception_handler+28>)
-   0x800015a <reset_exception_handler+6>:	ldr	r3, [r3, #0]
-   0x800015c <reset_exception_handler+8>:	movs	r2, #3
+=> 0x8000154 <start>:	push	{r7}
+   0x8000156 <start+2>:	add	r7, sp, #0
+   0x8000158 <start+4>:	ldr	r3, [pc, #20]	@ (0x8000170 <start+28>)
+   0x800015a <start+6>:	ldr	r3, [r3, #0]
+   0x800015c <start+8>:	movs	r2, #3
 ```
 
 Обратите внимание, что произошла очень важная вещь. gdb распечатал название
-нашей функции `reset_exception_handler`, название файла, где эта функция
-определена `loopc.c` и номер строки `9`.
+нашей функции `start`, название файла, где эта функция определена `loopc.c` и
+номер строки `9`.
 
-Командой `list` можно распечетать окрестности выполняемого кода:
+Командой `list` можно распечетать исходный код в окрестности выполняемого кода:
 
 ```
 (gdb) list
@@ -445,16 +459,13 @@ reset_exception_handler () at loopc.c:9
 5	static uint32_t loop_value_1 = loop_start;
 6	static uint32_t loop_value_2;
 7
-8	void reset_exception_handler(void)
+8	void start(void)
 9	{
 10	    for (;;)
 11	    {
 12	        loop_value_2 = loop_value_1 + loop_increment;
 13	        loop_value_1 = loop_value_2;
 ```
-
-Конечно их можно и просто посмотреть в вашем редакторе, но gdb распечатает
-гарантированно актуальный код (т.к. он сохранён внутри ELF-файла).
 
 Теперь можно убрать отображение дизассемблированного кода и добавить отображение
 значений переменных из кода на C:
@@ -464,7 +475,7 @@ reset_exception_handler () at loopc.c:9
 (gdb) display loop_value_1
 2: loop_value_1 = 305419896
 (gdb) display loop_value_2
-3: loop_value_2 = 305419899
+3: loop_value_2 = 306559500
 ```
 
 Далее будем вместо команды `stepi` (step instruction) использовать команду
@@ -473,18 +484,17 @@ reset_exception_handler () at loopc.c:9
 ```
 (gdb) step
 12	        loop_value_2 = loop_value_1 + loop_increment;
-2: loop_value_1 = 305419899
-3: loop_value_2 = 305419899
+2: loop_value_1 = 305419896
+3: loop_value_2 = 306559500
 (gdb) step
 13	        loop_value_1 = loop_value_2;
-2: loop_value_1 = 305419899
-3: loop_value_2 = 305419902
+2: loop_value_1 = 305419896
+3: loop_value_2 = 305419899
 (gdb) step
 12	        loop_value_2 = loop_value_1 + loop_increment;
-2: loop_value_1 = 305419902
-3: loop_value_2 = 305419902
+2: loop_value_1 = 305419899
+3: loop_value_2 = 305419899
 ```
 
 На этом данную часть можно считать завершённой. Мы научились компилировать и,
-что куда более важно, компоновать код на C, загружать его в микроконтроллер с
-помощью gdb, а также отлаживать его.
+что куда более важно, компоновать код на C, а также отлаживать его.

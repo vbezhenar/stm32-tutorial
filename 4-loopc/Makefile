@@ -4,11 +4,11 @@ loopc.bin: loopc.elf
 flash: loopc.bin
 	st-flash write loopc.bin 0x08000000
 
-loopc.elf: loopc.ld startup.o loopc.o
-	arm-none-eabi-ld -T loopc.ld -o loopc.elf startup.o loopc.o
+loopc.elf: linker.ld reset_exception_handler.o loopc.o
+	arm-none-eabi-ld -T linker.ld -o loopc.elf reset_exception_handler.o loopc.o
 
-startup.o: startup.s
-	arm-none-eabi-as -o startup.o startup.s
+reset_exception_handler.o: reset_exception_handler.s
+	arm-none-eabi-as -o reset_exception_handler.o reset_exception_handler.s
 
 loopc.o: loopc.c
 	arm-none-eabi-gcc -mcpu=cortex-m3 -g -O0 -c -o loopc.o loopc.c

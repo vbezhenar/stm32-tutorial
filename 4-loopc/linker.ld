@@ -8,7 +8,7 @@ SECTIONS {
     .isr_vector :
     {
         LONG(0x20000000 + 20K);
-        LONG(_startup | 1);
+        LONG(_reset_exception_handler | 1);
         . = 0x130;
     } > Flash
 
