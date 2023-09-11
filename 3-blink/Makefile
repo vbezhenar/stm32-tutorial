@@ -1,5 +1,5 @@
 blink.bin: blink.elf
-	arm-none-eabi-objcopy -O binary -j main blink.elf blink.bin
+	arm-none-eabi-objcopy -O binary -j flash blink.elf blink.bin
 
 flash: blink.bin
 	st-flash write blink.bin 0x08000000
