@@ -24,3 +24,33 @@ cat <<'EOF'
 EOF
 
 cat 2-loop/README.md
+
+cat <<'EOF'
+
+---
+
+EOF
+
+cat 3-blink/README.md
+
+cat <<'EOF'
+
+---
+
+EOF
+
+cat 4-loopc/README.md
+
+cat <<'EOF'
+
+---
+
+EOF
+
+cat 5-blinkc/README.md
+
+cat <<'EOF'
+
+---
+
+EOF
