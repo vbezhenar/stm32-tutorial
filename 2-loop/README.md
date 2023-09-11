@@ -59,17 +59,17 @@ cortex-m3. Это семейство ARM-процессоров, одним из
 (ассемблер). А точней `arm-none-eabi-as`:
 
 ```
-arm-none-eabi-as -o loop.o loop.s
+$ arm-none-eabi-as -o loop.o loop.s
 ```
 
 Файл `loop.o` является объектным файлом в формате ELF. Его можно посмотреть с
 помощью программ objdump и nm:
 
 ```
-arm-none-eabi-nm -g blink.o
+$ arm-none-eabi-nm -g blink.o
 00000000 N reset_exception_handler
 
-arm-none-eabi-objdump -D blink.o
+$ arm-none-eabi-objdump -D blink.o
 
 blink.o:     file format elf32-littlearm
 
@@ -98,12 +98,12 @@ Disassembly of section .ARM.attributes:
 `reset_exception_handler` со значением `0`.
 
 С выводом `objdump` посложней. В файле находится две секции: `code` и
-`<.ARM.attributes>`. `code` это то, что мы объявили. В нём 8 байтов, которые нам
-любезно дизассемблировали. Секция `<.ARM.attributes>` содержит служебные
-сведения, которые в конечной прошивке не появятся, поэтому её можно
-игнорировать. objdump попытался эти сведения дизассемблировать, но на самом деле
-это не машинный код, а просто формат такой. `objdump -D` пытается всё
-дизассембировать, даже если это не имеет смысла.
+`.ARM.attributes`. `code` это то, что мы объявили. В нём 8 байтов, которые нам
+любезно дизассемблировали. Секция `.ARM.attributes` содержит служебные сведения,
+которые в конечной прошивке не появятся, поэтому её можно игнорировать. objdump
+попытался эти сведения дизассемблировать, но на самом деле это не машинный код,
+а просто формат такой. `objdump -D` пытается всё дизассембировать, даже если это
+не имеет смысла.
 
 У нас теперь есть 8 байтов нашего кода, но нужно скомпоновать всё остальное.
 Конечно можно в каком-нибудь `hex`-редакторе это сделать вручную, но вообще для
@@ -123,11 +123,11 @@ Disassembly of section .ARM.attributes:
 
 Вот такой скрипт для линкера мы будем использовать:
 
-`linker.ld`:
+`loop.ld`:
 
 ```
 SECTIONS {
-    main 0x08000000 : {
+    flash 0x08000000 : {
         LONG(0x20000000 + 20K);
         LONG(reset_exception_handler | 1);
         . = 0x130;
@@ -136,12 +136,12 @@ SECTIONS {
 }
 ```
 
-`SECTIONS` объявляет выходные секции. `main` это название нашей выходной секции.
-Можно называть её как угодно. `0x0800 0000` это адрес, по которому эта секция
-будет располагаться в памяти. Это необходимо для того, чтобы линкер правильно
-подсчитал смещения, из `loop.o` мы экспортируем сивол `reset_exception_handler`
-со значением 0, но на самом деле в конечной прошивке у него будет значение
-`0x0800 0130`.
+`SECTIONS` объявляет выходные секции. `flash` это название нашей выходной
+секции. Можно называть её как угодно. `0x0800 0000` это адрес, по которому эта
+секция будет располагаться в памяти. Это необходимо для того, чтобы линкер
+правильно подсчитал смещения. Из `loop.o` мы экспортируем сивол
+`reset_exception_handler` со значением 0, но на самом деле в конечной прошивке у
+него будет значение `0x0800 0130`.
 
 `LONG(0x20000000 + 20K);` запишет по первому адресу в данной секции 4-х байтовое
 значение, которое процессор присвоит регистру `sp`. В принципе по выражению
@@ -175,24 +175,27 @@ SECTIONS {
 примере всё указано максимально явно и для наглядности использовано
 нестандартное название секции.
 
-Компоновщик запускается командой
-`arm-none-eabi-ld -T linker.ld -o loop-asm.elf loop.o`
+Линкер запускается командой:
 
-Если не было допущено никаких ошибок, то у нас получится файл `loop-asm.elf`. По
+```
+arm-none-eabi-ld -T loop.ld -o loop.elf loop.o
+```
+
+Если не было допущено никаких ошибок, то у нас получится файл `loop.elf`. По
 расширению, наверное, очевидно, что это объектный файл в формате ELF (как и
 `loop.o`). Если его просмотреть с помощью `nm` и `objdump`, то можно увидеть
 следующее:
 
 ```
-arm-none-eabi-nm loop-asm.elf
+$ arm-none-eabi-nm loop.elf
 08000130 R reset_exception_handler
 
-arm-none-eabi-objdump -D loop-asm.elf
+$ arm-none-eabi-objdump -D loop.elf
 
-loop-asm.elf:     file format elf32-littlearm
+loop.elf:     file format elf32-littlearm
 
 
-Disassembly of section main:
+Disassembly of section flash:
 
 08000000 <reset_exception_handler-0x130>:
  8000000:	20005000 	andcs	r5, r0, r0
@@ -218,8 +221,8 @@ Disassembly of section .ARM.attributes:
 ```
 
 Как видно, этот файл тоже экспортирует символ `reset_exception_handler`, но
-теперь уже со значением `0x0800_0130`. В этом файле имеются две секции `main` и
-`<.ARM.attributes>`. Последнюю мы так же проигнорируем, а вот в секции `main`
+теперь уже со значением `0x0800_0130`. В этом файле имеются две секции `flash` и
+`.ARM.attributes`. Последнюю мы так же проигнорируем, а вот в секции `flash`
 записано то, что мы и хотели получить. `objdump -D` пытается дизассемблировать
 первые 8 байтов, и у него даже что-то получается, но, конечно, это не команды, а
 адреса. А вот то, что начинается с адреса `0x0800_0130` это уже самый, что ни на
@@ -231,20 +234,21 @@ Disassembly of section .ARM.attributes:
 вытащить конечную прошивку, используется команда objcopy:
 
 ```
-arm-none-eabi-objcopy -O binary -j main loop-asm.elf loop-asm.bin
+arm-none-eabi-objcopy -O binary -j flash loop.elf loop.bin
 ```
 
 `-O binary` говорит о том, что мы хотим получить бинарный формат на выходе.
-`-j main` говорит, что нас интересует только секция `main` (этот флаг избыточен,
-когда у нас только одна не-служебная секция, но пусть будет для ясности).
+`-j flash` говорит, что нас интересует только секция `flash` (этот флаг
+избыточен, когда у нас только одна не-служебная секция, но пусть будет для
+ясности).
 
 Теперь посмотрим, что получилось:
 
 ```
-ls -l loop-asm.bin
--rwxr-xr-x. 1 vbezhenar vbezhenar 312 Sep  9 11:30 loop-asm.bin
+ls -l loop.bin
+-rwxr-xr-x. 1 vbezhenar vbezhenar 312 Sep  9 11:30 loop.bin
 
-hexdump -C loop-asm.bin
+hexdump -C loop.bin
 00000000  00 50 00 20 31 01 00 08  00 00 00 00 00 00 00 00  |.P. 1...........|
 00000010  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
 *
@@ -259,11 +263,11 @@ hexdump -C loop-asm.bin
 Пора заливать эту прошивку в микроконтроллер:
 
 ```
-st-flash --connect-under-reset write loop-asm.bin 0x08000000
+st-flash write loop.bin 0x08000000
 st-flash 1.7.0
 2023-09-09T11:36:28 WARN common.c: NRST is not connected
 2023-09-09T11:36:28 INFO common.c: F1xx Medium-density: 20 KiB SRAM, 64 KiB flash in at least 1 KiB pages.
-file loop-asm.bin md5 checksum: 20b87b3b138d91c38b47d29d95f773b, stlink checksum: 0x0000058d
+file loop.bin md5 checksum: 20b87b3b138d91c38b47d29d95f773b, stlink checksum: 0x0000058d
 2023-09-09T11:36:28 INFO common.c: Attempting to write 312 (0x138) bytes to stm32 address: 134217728 (0x8000000)
 2023-09-09T11:36:28 INFO common.c: Flash page at addr: 0x08000000 erased
 2023-09-09T11:36:28 INFO common.c: Finished erasing 1 pages of 1024 (0x400) bytes
@@ -333,13 +337,13 @@ STM32F103 эту информацию можно посмотреть в Referen
 
 ```
 loop.bin: loop.elf
-	arm-none-eabi-objcopy -O binary -j main loop.elf loop.bin
+	arm-none-eabi-objcopy -O binary -j flash loop.elf loop.bin
 
 flash: loop.bin
 	st-flash write loop.bin 0x08000000
 
-loop.elf: linker.ld loop.o
-	arm-none-eabi-ld -T linker.ld -o loop.elf loop.o
+loop.elf: loop.ld loop.o
+	arm-none-eabi-ld -T loop.ld -o loop.elf loop.o
 
 loop.o: loop.s
 	arm-none-eabi-as -o loop.o loop.s
@@ -376,7 +380,7 @@ target-file: source-file1 source-file2
 make loop.bin
 arm-none-eabi-as -o loop.o loop.s
 arm-none-eabi-ld -T linker.ld -o loop.elf loop.o
-arm-none-eabi-objcopy -O binary -j main loop.elf loop.bin
+arm-none-eabi-objcopy -O binary -j flash loop.elf loop.bin
 ```
 
 Если запустим во второй раз, то `make` ничего не будет делать:
@@ -393,7 +397,7 @@ make: 'loop.bin' is up to date.
 touch linker.ld
 make loop.bin
 arm-none-eabi-ld -T linker.ld -o loop.elf loop.o
-arm-none-eabi-objcopy -O binary -j main loop.elf loop.bin
+arm-none-eabi-objcopy -O binary -j flash loop.elf loop.bin
 ```
 
 `loop.s` не изменился, значит `loop.o` пересобирать нет нужды.
