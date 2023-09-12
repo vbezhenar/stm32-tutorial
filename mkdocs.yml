@@ -10,6 +10,7 @@ nav:
   - 3-blink/README.md
   - 4-loopc/README.md
   - 5-blinkc/README.md
+  - 6-blinkt/README.md
 
 theme:
   name: material
