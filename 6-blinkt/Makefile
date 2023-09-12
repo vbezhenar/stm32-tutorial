@@ -2,7 +2,7 @@ blinkt.bin: blinkt.elf
 	arm-none-eabi-objcopy -O binary blinkt.elf blinkt.bin
 
 flash: blinkt.bin
-	st-flash --connect-under-reset write blinkt.bin 0x08000000
+	st-flash write blinkt.bin 0x08000000
 
 blinkt.elf: linker.ld reset_exception_handler.o blinkt.o
 	arm-none-eabi-ld -T linker.ld -o blinkt.elf reset_exception_handler.o blinkt.o

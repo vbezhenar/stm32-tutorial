@@ -16,7 +16,8 @@ cmp r1, r2
 bge end_copy
 ldr r3, [r0], #4
 str r3, [r1], #4
-b copy_loop
+bl copy_loop
+b .
 
 end_copy:
 b start
