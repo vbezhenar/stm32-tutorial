@@ -1,0 +1,20 @@
+site_name: Осваиваем STM32 снизу
+repo_name: vbezhenar/stm32-tutorial
+repo_url: https://github.com/vbezhenar/stm32-tutorial
+
+docs_dir: pages
+
+nav:
+  - 1-explore/README.md
+  - 2-loop/README.md
+  - 3-blink/README.md
+  - 4-loopc/README.md
+  - 5-blinkc/README.md
+  - 6-blinkt/README.md
+
+theme:
+  name: material
+  language: ru
+  palette:
+    primary: green
+    accent: green

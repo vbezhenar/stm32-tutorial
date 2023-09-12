@@ -1,0 +1,35 @@
+name: pages
+
+on:
+  push:
+    branch: main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/cache@v3
+        with:
+          path: |
+            cache/pip
+          key: cache-pip-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            cache-pip-${{ runner.os }}
+      - run: make build
+        env:
+          PIP_CACHE_DIR: cache/pip
+      - uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: site
+          publish_branch: site
+          commit_message: |-
+            render: ${{ github.event.head_commit.message }}
+
+            Render static website for GitHub pages from
+            commit
