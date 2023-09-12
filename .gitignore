@@ -1,3 +1,8 @@
 *.bin
 *.elf
 *.o
+
+site
+pages/README.md
+Makefile.venv
+.venv
