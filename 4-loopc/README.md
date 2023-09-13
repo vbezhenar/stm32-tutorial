@@ -218,7 +218,7 @@ SECTIONS {
 копирует содержимое секций `.bss` из всех входных файлов в текущую выходную
 секцию. `. = ALIGN(4)` эта строка опять выравнивает окончание секции до адреса,
 кратного четырём. `_bss_end = .` эта строка объявляет новый символ `_bss_end` со
-значением текущего адреса, т.е. конца выходной секции. `.bss`. `> SRAM` эта
+значением текущего адреса, т.е. конца выходной секции `.bss`. `> SRAM` эта
 строка означает, что все символы, располагающиеся в секции `.bss`, после
 компоновки будут указывать в область `SRAM`.
 
@@ -286,18 +286,31 @@ SRAM.
 .text
 
 _reset_exception_handler:
+// zero out .bss section
+mov r0, #0
+ldr r1, =_bss_start
+ldr r2, =_bss_end
+
+copy_bss_loop:
+cmp r1, r2
+bge copy_bss_end
+str r0, [r1], #4
+b copy_bss_loop
+copy_bss_end:
+
+// copy .data section from flash to sram
 ldr r0, =_flash_data_start
 ldr r1, =_sram_data_start
 ldr r2, =_sram_data_end
 
-copy_loop:
+copy_data_loop:
 cmp r1, r2
-bge end_copy
+bge copy_data_end
 ldr r3, [r0], #4
 str r3, [r1], #4
-b copy_loop
+b copy_data_loop
 
-end_copy:
+copy_data_end:
 b start
 ```
 
@@ -305,19 +318,31 @@ b start
 
 ```
 _reset_exception_handler:
+// zero out .bss section
+r0 := 0
+r1 := _bss_start
+r2 := _bss_end
+
+copy_bss_loop:
+if r1 >= r2 then goto copy_bss_end
+memory[r1] := r0
+goto copy_bss_loop
+copy_bss_end:
+
+// copy .data section from flash to sram
 r0 := _flash_data_start
 r1 := _sram_data_start
 r2 := _sram_data_end
 
-copy_loop:
-if r1 >= r2 then goto end_copy
-r3 := [r0]
+copy_data_loop:
+if r1 >= r2 then goto copy_data_end
+r3 := memory[r0]
 r0 := r0 + 4
-[r1] := r3
+memory[r1] := r3
 r1 := r1 + 4
-goto copy_loop
+goto copy_data_loop
 
-end_copy:
+copy_data_end:
 goto start
 ```
 
@@ -353,7 +378,7 @@ determining executable automatically.  Try using the "file" command.
 0x08000130 in ?? ()
 ```
 
-Значение регистра $pc должно быть равно `0x08000130`.
+Значение регистра $pc должно быть равно `0x0800_0130`.
 
 Теперь загрузим программу, чтобы gdb мог прочитать символы и отладочную
 информацию:
@@ -362,6 +387,35 @@ determining executable automatically.  Try using the "file" command.
 (gdb) symbol-file loopc.elf
 Reading symbols from loopc.elf...
 ```
+
+Задача этой отладочной секции - удостовериться в корректности работы кода по
+инициализации секций.
+
+Проверим, что сейчас в этих секциях находится:
+
+```
+(gdb) print/z &_bss_start
+$5 = 0x20000000
+(gdb) print/z &_bss_end
+$4 = 0x20000004
+(gdb) print/z &_sram_data_start
+$2 = 0x20000004
+(gdb) print/z &_sram_data_end
+$3 = 0x20000008
+(gdb) print/z &_flash_data_start
+$1 = 0x0800019c
+(gdb) x/2z 0x20000000
+0x20000000 <loop_value_2>:	0x124beaa5	0x124beaa5
+(gdb) x/1z 0x0800019c
+0x800019c:	0x12345678
+```
+
+Секция `.bss` располагается от адреса `0x2000_0000` до адреса `0x2000_0004` (не
+включительно). Секция `.data` в SRAM располагается от адреса `0x2000_0004` до
+адреса `0x2000_0008`. По этим адресам в SRAM находятся какие-то странные
+значения `0x124beaa5`. Секция `.data` во флеш-памяти начинается с адреса
+`0x0800019c` и по этому адресу действительно располагается то значение, которым
+мы инициализировали переменную `loop_start` в нашем коде на C.
 
 У gdb есть очень полезная команда `display`. Мы ей указываем формат и выражение,
 аналогично команде `print`, а она распечатывает это выражение при каждом шаге
@@ -372,29 +426,29 @@ Reading symbols from loopc.elf...
 (gdb) display/6i $pc - 2
 1: x/6i $pc - 2
    0x800012e:	movs	r0, r0
-=> 0x8000130 <_reset_exception_handler>:	ldr	r0, [pc, #20]	@ (0x8000148 <end_copy+4>)
-   0x8000132 <_reset_exception_handler+2>:	ldr	r1, [pc, #24]	@ (0x800014c <end_copy+8>)
-   0x8000134 <_reset_exception_handler+4>:	ldr	r2, [pc, #24]	@ (0x8000150 <end_copy+12>)
-   0x8000136 <copy_loop>:	cmp	r1, r2
-   0x8000138 <copy_loop+2>:	bge.n	0x8000144 <end_copy>
+=> 0x8000130 <_reset_exception_handler>:	mov.w	r0, #0
+   0x8000134 <_reset_exception_handler+4>:	ldr	r1, [pc, #36]	@ (0x800015c <copy_data_end+6>)
+   0x8000136 <_reset_exception_handler+6>:	ldr	r2, [pc, #40]	@ (0x8000160 <copy_data_end+10>)
+   0x8000138 <copy_bss_loop>:	cmp	r1, r2
+   0x800013a <copy_bss_loop+2>:	bge.n	0x8000142 <copy_bss_end>
 ```
 
-Можно распознать в этом коде содержимое файла startup.s. Также можно обратить
-внимание, что рядом с адресами появились имена символов, которые соответствуют
-этим адресам.
+Можно распознать в этом коде начало кода из файла reset_exception_handler.s.
+Также можно обратить внимание, что рядом с адресами появились имена символов,
+которые соответствуют этим адресам.
 
 Сделаем шаг:
 
 ```
 (gdb) stepi
-0x08000132 in _reset_exception_handler ()
+0x08000134 in _reset_exception_handler ()
 1: x/6i $pc - 2
-   0x8000130 <_reset_exception_handler>:	ldr	r0, [pc, #20]	@ (0x8000148 <end_copy+4>)
-=> 0x8000132 <_reset_exception_handler+2>:	ldr	r1, [pc, #24]	@ (0x800014c <end_copy+8>)
-   0x8000134 <_reset_exception_handler+4>:	ldr	r2, [pc, #24]	@ (0x8000150 <end_copy+12>)
-   0x8000136 <copy_loop>:	cmp	r1, r2
-   0x8000138 <copy_loop+2>:	bge.n	0x8000144 <end_copy>
-   0x800013a <copy_loop+4>:	ldr.w	r3, [r0], #4
+   0x8000132 <_reset_exception_handler+2>:	movs	r0, r0
+=> 0x8000134 <_reset_exception_handler+4>:	ldr	r1, [pc, #36]	@ (0x800015c <copy_data_end+6>)
+   0x8000136 <_reset_exception_handler+6>:	ldr	r2, [pc, #40]	@ (0x8000160 <copy_data_end+10>)
+   0x8000138 <copy_bss_loop>:	cmp	r1, r2
+   0x800013a <copy_bss_loop+2>:	bge.n	0x8000142 <copy_bss_end>
+   0x800013c <copy_bss_loop+4>:	str.w	r0, [r1], #4
 ```
 
 Как и ожидалось, команда `display` распечатала обновлённый код. Теперь нажмём
@@ -402,57 +456,75 @@ Reading symbols from loopc.elf...
 
 ```
 (gdb)
-0x08000134 in _reset_exception_handler ()
+0x08000136 in _reset_exception_handler ()
 1: x/6i $pc - 2
-   0x8000132 <_reset_exception_handler+2>:	ldr	r1, [pc, #24]	@ (0x800014c <end_copy+8>)
-=> 0x8000134 <_reset_exception_handler+4>:	ldr	r2, [pc, #24]	@ (0x8000150 <end_copy+12>)
-   0x8000136 <copy_loop>:	cmp	r1, r2
-   0x8000138 <copy_loop+2>:	bge.n	0x8000144 <end_copy>
-   0x800013a <copy_loop+4>:	ldr.w	r3, [r0], #4
+   0x8000134 <_reset_exception_handler+4>:	ldr	r1, [pc, #36]	@ (0x800015c <copy_data_end+6>)
+=> 0x8000136 <_reset_exception_handler+6>:	ldr	r2, [pc, #40]	@ (0x8000160 <copy_data_end+10>)
+   0x8000138 <copy_bss_loop>:	cmp	r1, r2
+   0x800013a <copy_bss_loop+2>:	bge.n	0x8000142 <copy_bss_end>
+   0x800013c <copy_bss_loop+4>:	str.w	r0, [r1], #4
+   0x8000140 <copy_bss_loop+8>:	b.n	0x8000138 <copy_bss_loop>
 ```
 
-Это повторило предыдущую инструкцию и сделало ещё один шаг вперёд. Можно
-увидеть, что после того, как startup скопирует нашу секцию `.data`, он перейдёт
-на инструкцию по адресу `0x0800_0144` с символов end_copy. Не будем шагать
-дальше, а поставим отладочную точку (breakpoint, брейкпоинт) на этот адрес и
-запустим выполнение программы до остановки:
+Это повторило предыдущую инструкцию и сделало ещё один шаг вперёд.
+
+Распечатаем листинг всего начального кода:
 
 ```
-(gdb) break end_copy
-Breakpoint 1 at 0x8000144
+(gdb) x/16i 0x08000130
+   0x8000130 <_reset_exception_handler>:	mov.w	r0, #0
+   0x8000134 <_reset_exception_handler+4>:	ldr	r1, [pc, #36]	@ (0x800015c <copy_data_end+6>)
+=> 0x8000136 <_reset_exception_handler+6>:	ldr	r2, [pc, #40]	@ (0x8000160 <copy_data_end+10>)
+   0x8000138 <copy_bss_loop>:	cmp	r1, r2
+   0x800013a <copy_bss_loop+2>:	bge.n	0x8000142 <copy_bss_end>
+   0x800013c <copy_bss_loop+4>:	str.w	r0, [r1], #4
+   0x8000140 <copy_bss_loop+8>:	b.n	0x8000138 <copy_bss_loop>
+   0x8000142 <copy_bss_end>:	ldr	r0, [pc, #32]	@ (0x8000164 <copy_data_end+14>)
+   0x8000144 <copy_bss_end+2>:	ldr	r1, [pc, #32]	@ (0x8000168 <copy_data_end+18>)
+   0x8000146 <copy_bss_end+4>:	ldr	r2, [pc, #36]	@ (0x800016c <copy_data_end+22>)
+   0x8000148 <copy_data_loop>:	cmp	r1, r2
+   0x800014a <copy_data_loop+2>:	bge.n	0x8000156 <copy_data_end>
+   0x800014c <copy_data_loop+4>:	ldr.w	r3, [r0], #4
+   0x8000150 <copy_data_loop+8>:	str.w	r3, [r1], #4
+   0x8000154 <copy_data_loop+12>:	b.n	0x8000148 <copy_data_loop>
+   0x8000156 <copy_data_end>:	b.w	0x8000170 <start>
+```
+
+Можно увидеть, что после того, как `_reset_exception_handler` обнулит секцию
+`.bss` и скопирует нашу секцию `.data`, он перейдёт на инструкцию по адресу
+`0x800_0156 copy_data_end` . Не будем шагать дальше, а поставим отладочную точку
+(breakpoint, брейкпоинт) на этот адрес и запустим выполнение программы до
+остановки:
+
+```
+(gdb) break copy_data_end
+Breakpoint 1 at 0x8000156
 Note: automatically using hardware breakpoints for read-only addresses.
 (gdb) continue
 Continuing.
 
-Breakpoint 1, 0x08000144 in end_copy ()
+Breakpoint 1, 0x08000156 in copy_data_end ()
 1: x/6i $pc - 2
-   0x8000142 <copy_loop+12>:	b.n	0x8000136 <copy_loop>
-=> 0x8000144 <end_copy>:	b.w	0x8000154 <start>
-   0x8000148 <end_copy+4>:	lsls	r0, r0, #6
-   0x800014a <end_copy+6>:	lsrs	r0, r0, #32
-   0x800014c <end_copy+8>:	movs	r4, r0
-   0x800014e <end_copy+10>:	movs	r0, #0
+   0x8000154 <copy_data_loop+12>:	b.n	0x8000148 <copy_data_loop>
+=> 0x8000156 <copy_data_end>:	b.w	0x8000170 <start>
+   0x800015a <copy_data_end+4>:	movs	r0, r0
+   0x800015c <copy_data_end+6>:	movs	r0, r0
+   0x800015e <copy_data_end+8>:	movs	r0, #0
+   0x8000160 <copy_data_end+10>:	movs	r4, r0
 ```
 
 Следующей инструкцей мы перейдём уже в скомпилированный код функции `start`. А
-перед этим проверим, действительно ли секция `.data` в SRAM инициализирована.
+перед этим проверим, действительно ли секции `.bss` и `.data` в SRAM
+инициализированы.
 
 ```
-(gdb) print/z &_flash_data_start
-$1 = 0x08000180
-(gdb) print/z &_sram_data_start
-$2 = 0x20000004
-(gdb) print/z &_sram_data_end
-$3 = 0x20000008
-(gdb) x/z 0x08000180
-0x8000180:	0x12345678
-(gdb) x/z 0x20000004
-0x20000004 <loop_value_1>:	0x12345678
+(gdb) x/2z 0x20000000
+0x20000000 <loop_value_2>:	0x00000000	0x12345678
 ```
 
-Видно, что значение `0x1234_5678` действительно было скопировано с флеш-памяти
-по адресу `0x0800_0180` в SRAM по адресу `0x2000_0004`. Также gdb знает про
-символ `loop_value_1`, т.е. переменную из кода на C.
+Видно, что в секции `.bss` по адресу `0x2000_0000` появился 0, а значение
+`0x1234_5678` действительно было скопировано с секцию `.data`. Также gdb знает
+про символ `loop_value_2`, т.е. переменную из кода на C.
 
 Теперь перейдём в функцию start:
 
@@ -460,13 +532,12 @@ $3 = 0x20000008
 (gdb) stepi
 start () at loopc.c:9
 9	{
-1: x/6i $pc - 2
-   0x8000152 <end_copy+14>:	movs	r0, #0
-=> 0x8000154 <start>:	push	{r7}
-   0x8000156 <start+2>:	add	r7, sp, #0
-   0x8000158 <start+4>:	ldr	r3, [pc, #20]	@ (0x8000170 <start+28>)
-   0x800015a <start+6>:	ldr	r3, [r3, #0]
-   0x800015c <start+8>:	movs	r2, #3
+   0x800016e <copy_data_end+24>:	movs	r0, #0
+=> 0x8000170 <start>:	push	{r7}
+   0x8000172 <start+2>:	add	r7, sp, #0
+   0x8000174 <start+4>:	ldr	r3, [pc, #20]	@ (0x800018c <start+28>)
+   0x8000176 <start+6>:	ldr	r3, [r3, #0]
+   0x8000178 <start+8>:	movs	r2, #3
 ```
 
 Обратите внимание, что произошла очень важная вещь. gdb распечатал название
@@ -497,7 +568,7 @@ start () at loopc.c:9
 (gdb) display loop_value_1
 2: loop_value_1 = 305419896
 (gdb) display loop_value_2
-3: loop_value_2 = 306559500
+3: loop_value_2 = 0
 ```
 
 Далее будем вместо команды `stepi` (step instruction) использовать команду
@@ -507,7 +578,7 @@ start () at loopc.c:9
 (gdb) step
 12	        loop_value_2 = loop_value_1 + loop_increment;
 2: loop_value_1 = 305419896
-3: loop_value_2 = 306559500
+3: loop_value_2 = 0
 (gdb) step
 13	        loop_value_1 = loop_value_2;
 2: loop_value_1 = 305419896
