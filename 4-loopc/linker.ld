@@ -28,8 +28,10 @@ SECTIONS {
     
     .bss : {
         . = ALIGN(4);
+        _bss_start = .;
         *(.bss)
         . = ALIGN(4);
+        _bss_end = .;
     } > SRAM
 
     .data : {
@@ -37,7 +39,7 @@ SECTIONS {
         _flash_data_start = LOADADDR(.data);
         _sram_data_start = .;
         *(.data)
-        _sram_data_end = .;
         . = ALIGN(4);
+        _sram_data_end = .;
     } > SRAM AT> Flash
 }
