@@ -44,15 +44,23 @@ static void configure_sys_tick_timer(void)
 {
     uint32_t stk_base_address = 0xE000E010;
     uint32_t stk_ctrl_address = stk_base_address + 0x00;
-    volatile uint32_t *stk_ctrl_pointer = (uint32_t *)stk_ctrl_address;
+    uint32_t stk_ctrl_enable = 1 << 0;
+    uint32_t stk_ctrl_tickint = 1 << 1;
+
     uint32_t stk_load_address = stk_base_address + 0x04;
-    volatile uint32_t *stk_load_pointer = (uint32_t *)stk_load_address;
+
     // enable systick exception, enable systick counter
+    volatile uint32_t *stk_ctrl_pointer = (uint32_t *)stk_ctrl_address;
     uint32_t stk_ctrl_value = *stk_ctrl_pointer;
-    stk_ctrl_value = stk_ctrl_value | 0x00000003;
+    stk_ctrl_value |= stk_ctrl_enable;
+    stk_ctrl_value |= stk_ctrl_tickint;
     *stk_ctrl_pointer = stk_ctrl_value;
+
     // set reload value to 500 ms
-    *stk_load_pointer = 8000000 / 8 / 2;
+    volatile uint32_t *stk_load_pointer = (uint32_t *)stk_load_address;
+    uint32_t stk_load_value;
+    stk_load_value = 8000000 / 8 / 2;
+    *stk_load_pointer = stk_load_value;
 }
 
 static void toggle_pin(void);
@@ -67,9 +75,10 @@ static void toggle_pin(void)
     // toggle PC13
     uint32_t gpioc_base_address = 0x40011000;
     uint32_t gpioc_odr_address = gpioc_base_address + 0x0c;
+    uint32_t gpiox_odr_odr13 = 1 << 13;
+
     volatile uint32_t *gpioc_odr_pointer = (uint32_t *)gpioc_odr_address;
-    uint32_t gpioc_odr_value;
-    gpioc_odr_value = *gpioc_odr_pointer;
-    gpioc_odr_value ^= 0x00002000;
+    uint32_t gpioc_odr_value = *gpioc_odr_pointer;
+    gpioc_odr_value ^= gpiox_odr_odr13;
     *gpioc_odr_pointer = gpioc_odr_value;
 }
