@@ -406,3 +406,6 @@ arm-none-eabi-objcopy -O binary -j flash loop.elf loop.bin
 проекте нет, а правила есть. Это т.н. phony targets, им никакие файлы не
 соответствуют, а нужны они просто для удобства. Набрали `make clean` и почистили
 директорию.
+
+Полный код доступен на
+[гитхабе](https://github.com/vbezhenar/stm32-tutorial/blob/main/2-loop).
