@@ -47,7 +47,7 @@ static void enable_usart(void)
     uint32_t gpiob_crh_value = *gpiob_crh_pointer;
     gpiob_crh_value &= ~gpiox_crh_mode10_0;
     gpiob_crh_value |= gpiox_crh_mode10_1;
-    gpiob_crh_value |= gpiox_crh_cnf10_0;
+    gpiob_crh_value &= ~gpiox_crh_cnf10_0;
     gpiob_crh_value |= gpiox_crh_cnf10_1;
     *gpiob_crh_pointer = gpiob_crh_value;
 
