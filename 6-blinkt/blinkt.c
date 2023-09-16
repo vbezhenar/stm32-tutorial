@@ -12,8 +12,7 @@ void start(void)
 
     for (;;)
     {
-        // asm("wfi");
-        asm("nop");
+        asm("");
     }
 }
 
