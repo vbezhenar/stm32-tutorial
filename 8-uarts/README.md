@@ -334,4 +334,4 @@ void SysTick_Handler(void)
 более точным таймером.
 
 Полный код доступен на
-[гитхабе](https://github.com/vbezhenar/stm32-tutorial/blob/main/7-uarts).
+[гитхабе](https://github.com/vbezhenar/stm32-tutorial/blob/main/8-uarts).
