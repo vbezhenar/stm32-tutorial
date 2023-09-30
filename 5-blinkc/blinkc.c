@@ -36,7 +36,7 @@ static void enable_port_clock(void)
 
 static void configure_pin(void)
 {
-    // configure PC13 as open-drain output with 10 MHz speed
+    // configure PC13 as open-drain output with 2 MHz speed
     uint32_t gpioc_base_address = 0x40011000;
     uint32_t gpioc_crh_address = gpioc_base_address + 0x04;
     uint32_t gpiox_crh_mode13_0 = 1 << 20;
