@@ -2,7 +2,7 @@ usart.bin: usart.elf
 	arm-none-eabi-objcopy -O binary usart.elf usart.bin
 
 flash: usart.bin
-	st-flash write usart.bin 0x08000000
+	st-flash --connect-under-reset write usart.bin 0x08000000
 
 usart.elf: linker.ld reset_exception_handler.o usart.o
 	arm-none-eabi-ld -T linker.ld -o usart.elf reset_exception_handler.o usart.o

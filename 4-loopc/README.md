@@ -355,7 +355,7 @@ $ make flash
 arm-none-eabi-gcc -mcpu=cortex-m3 -g -O0 -c -o loopc.o loopc.c
 arm-none-eabi-ld -T linker.ld -o loopc.elf reset_exception_handler.o loopc.o
 arm-none-eabi-objcopy -O binary loopc.elf loopc.bin
-st-flash write loopc.bin 0x08000000
+st-flash --connect-under-reset write loopc.bin 0x08000000
 st-flash 1.7.0
 ...
 2023-09-11T23:48:28 INFO common.c: Flash written and verified! jolly good!

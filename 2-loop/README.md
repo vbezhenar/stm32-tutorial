@@ -274,7 +274,7 @@ st-flash read orig.bin 0x08000000 0x10000
 `st-flash --connect-under-reset write loop.bin 0x08000000`
 
 ```
-st-flash write loop.bin 0x08000000
+st-flash --connect-under-reset write loop.bin 0x08000000
 st-flash 1.7.0
 2023-09-09T11:36:28 WARN common.c: NRST is not connected
 2023-09-09T11:36:28 INFO common.c: F1xx Medium-density: 20 KiB SRAM, 64 KiB flash in at least 1 KiB pages.
@@ -351,7 +351,7 @@ loop.bin: loop.elf
 	arm-none-eabi-objcopy -O binary -j flash loop.elf loop.bin
 
 flash: loop.bin
-	st-flash write loop.bin 0x08000000
+	st-flash --connect-under-reset write loop.bin 0x08000000
 
 loop.elf: loop.ld loop.o
 	arm-none-eabi-ld -T loop.ld -o loop.elf loop.o

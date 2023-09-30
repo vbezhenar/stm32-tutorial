@@ -26,7 +26,7 @@ main.o: main.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 flash: usarts.bin
-	st-flash write $< 0x08000000
+	st-flash --connect-under-reset write $< 0x08000000
 
 clean:
 	rm -f usarts.elf usarts.bin *.o
