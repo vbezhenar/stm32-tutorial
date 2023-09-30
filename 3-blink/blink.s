@@ -14,7 +14,7 @@ ldr r1, [r0]
 orr r1, 1 << 4 // IOPCEN
 str r1, [r0]
 
-// configure PC13 as open-drain output with 10 MHz speed
+// configure PC13 as open-drain output with 2 MHz speed
 ldr r0, =0x40011000 + 0x04 // GPIOC_CRH
 ldr r1, [r0]
 bic r1, 1 << 20 // MODE13:0
