@@ -1,7 +1,7 @@
 CPPFLAGS := -I$(CMSIS_STM32F1)/Device/ST/STM32F1xx/Include
 CPPFLAGS += -I$(CMSIS_STM32F1)/Include
 CPPFLAGS += -DSTM32F103xB 
-CFLAGS := -mcpu=cortex-m3
+CFLAGS := -mcpu=cortex-m3 -g -std=c17 -Wall -Wextra -Wpedantic
 CFLAGS += -Os
 LDSCRIPT := STM32F103XB_FLASH.ld
 
@@ -30,5 +30,3 @@ flash: usarts.bin
 
 clean:
 	rm -f usarts.elf usarts.bin *.o
-
-

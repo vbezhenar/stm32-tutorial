@@ -119,8 +119,11 @@ CPPFLAGS += -I$(CMSIS_STM32F1)/Include
 CPPFLAGS += -DSTM32F103xB
 CFLAGS := -mcpu=cortex-m3 -g -std=c17 -Wall -Wextra -Wpedantic
 CFLAGS += -Os
+...
 
 CC := arm-none-eabi-gcc
+
+...
 
 main.o: main.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
