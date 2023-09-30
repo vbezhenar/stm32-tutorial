@@ -117,7 +117,7 @@ int main(void)
 CPPFLAGS := -I$(CMSIS_STM32F1)/Device/ST/STM32F1xx/Include
 CPPFLAGS += -I$(CMSIS_STM32F1)/Include
 CPPFLAGS += -DSTM32F103xB
-CFLAGS := -march=armv7 -mtune=cortex-m3 -g -std=c17 -Wall -Wextra -Wpedantic
+CFLAGS := -mcpu=cortex-m3 -g -std=c17 -Wall -Wextra -Wpedantic
 CFLAGS += -Os
 
 CC := arm-none-eabi-gcc

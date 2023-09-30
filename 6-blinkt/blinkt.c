@@ -12,7 +12,6 @@ void start(void)
 
     for (;;)
     {
-        asm("");
     }
 }
 
