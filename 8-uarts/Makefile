@@ -10,10 +10,10 @@ CC := arm-none-eabi-gcc
 LD := arm-none-eabi-ld
 OBJCOPY := arm-none-eabi-objcopy
 
-usarts.elf: $(LDSCRIPT) startup_stm32f103xb.o system_stm32f1xx.o main.o
+uarts.elf: $(LDSCRIPT) startup_stm32f103xb.o system_stm32f1xx.o main.o
 	$(LD) -o $@ -T $^
 
-usarts.bin: usarts.elf
+uarts.bin: uarts.elf
 	$(OBJCOPY) -O binary $<  $@
 
 startup_stm32f103xb.o: $(CMSIS_STM32F1)/Device/ST/STM32F1xx/Source/Templates/gcc/startup_stm32f103xb.s
@@ -25,8 +25,8 @@ system_stm32f1xx.o: $(CMSIS_STM32F1)/Device/ST/STM32F1xx/Source/Templates/system
 main.o: main.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
-flash: usarts.bin
+flash: uarts.bin
 	st-flash --connect-under-reset write $< 0x08000000
 
 clean:
-	rm -f usarts.elf usarts.bin *.o
+	rm -f uarts.elf uarts.bin *.o
