@@ -66,12 +66,12 @@ $ arm-none-eabi-as -o loop.o loop.s
 помощью программ objdump и nm:
 
 ```
-$ arm-none-eabi-nm -g blink.o
+$ arm-none-eabi-nm -g loop.o
 00000000 N reset_exception_handler
 
-$ arm-none-eabi-objdump -D blink.o
+$ arm-none-eabi-objdump -D loop.o
 
-blink.o:     file format elf32-littlearm
+loop.o:     file format elf32-littlearm
 
 
 Disassembly of section code:
@@ -260,7 +260,18 @@ hexdump -C loop.bin
 кодировке little-endian число `0x2000_5000` кодируется байтами в обратном
 порядке: `00 50 00 20`, а число `0x0800_0131` кодируется байтами `31 01 00 08`.
 
-Пора заливать эту прошивку в микроконтроллер:
+Пора заливать эту прошивку в микроконтроллер. Если вы хотите перед этим
+сохранить прошивку, которая там уже записана, то это можно сделать с помощью
+следующей команды:
+
+```
+st-flash read orig.bin 0x08000000 0x10000
+```
+
+которая сохранит её в файл `orig.bin`.
+
+Для записи нашей прошивки используется команда
+`st-flash --connect-under-reset write loop.bin 0x08000000`
 
 ```
 st-flash write loop.bin 0x08000000
