@@ -11,6 +11,9 @@ nav:
   - 4-loopc/README.md
   - 5-blinkc/README.md
   - 6-blinkt/README.md
+  - 7-uart/README.md
+  - 8-uarts/README.md
+  - 9-uartlc/README.md
 
 theme:
   name: material
