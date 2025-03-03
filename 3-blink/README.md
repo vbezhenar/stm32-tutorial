@@ -108,7 +108,7 @@ MHz. В reference manual, разделе 3.3 можно найти адреса 
 На ассемблере это запишется так:
 
 ```
-// configure PC13 as open-drain output with 10 MHz speed
+// configure PC13 as open-drain output with 2 MHz speed
 ldr r0, =0x40011000 + 0x04 // GPIOC_CRH
 ldr r1, [r0]
 bic r1, 1 << 20 // MODE13:0
@@ -121,7 +121,7 @@ str r1, [r0]
 Этому коду соответствует псевдокод
 
 ```
-// configure PC13 as open-drain output with 10 MHz speed
+// configure PC13 as open-drain output with 2 MHz speed
 r0 := 0x4001_1000 + 0x04;
 r1 := memory[r0];
 r1[20] := 0;
